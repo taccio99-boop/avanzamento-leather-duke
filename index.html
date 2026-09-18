@@ -260,8 +260,6 @@ main{max-width:1400px;margin:0 auto;padding:14px calc(12px + var(--sa-r)) 24px c
 .mt.ok::before{background:var(--verde);box-shadow:0 0 8px var(--verde)}
 .mt.no{color:var(--muted);font-weight:400;font-style:italic}
 .mt.no::before{background:#3f5247;box-shadow:none}
-.ass{font-size:12.5px;color:var(--muted)}
-.ass b{color:var(--txt);font-weight:600}
 .apri{margin-top:12px;width:100%;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--bordo2);border-radius:13px;background:rgba(26,235,143,.06);color:var(--chiaro);font-weight:600;font-size:14px;cursor:pointer}
 .apri:active{background:rgba(26,235,143,.16)}
 .apri svg{width:16px;height:16px;transition:transform .2s}
@@ -279,7 +277,6 @@ main{max-width:1400px;margin:0 auto;padding:14px calc(12px + var(--sa-r)) 24px c
 .vv:last-child{border-bottom:0}
 .vv .m{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);white-space:nowrap}
 .vv b{font-family:var(--f-mono);white-space:nowrap}
-.vv.io{color:var(--verde)}
 .blocco{background:rgba(0,0,0,.3);border:1px solid var(--riga);border-radius:12px}
 .nota{font-size:12px;color:#ffd88f;background:rgba(255,190,77,.06);border:1px solid rgba(255,190,77,.2);border-radius:10px;padding:8px 10px;margin-top:6px}
 .vuoto{padding:34px 14px;text-align:center;color:var(--muted);background:var(--pannello);border:1px dashed var(--bordo2);border-radius:18px;margin-top:14px}
@@ -692,9 +689,6 @@ function fase(f) {
 }
 const brandTag = function (b) { return /saint|ysl/i.test(b || "") ? '<span class="brand ysl">YSL</span>' : /gucci/i.test(b || "") ? '<span class="brand gu">GUCCI</span>' : ""; };
 const artTxt = function (c) { return [c.mod, c.parte].filter(Boolean).join(" ") + (c.descr ? " · " + c.descr : ""); };
-const eLD = function (s) { return /^\s*leather\W*duke\s*$/i.test(s || ""); };
-/* Assemblaggio dal Carico: chi assembla oltre (o al posto di) Leather Duke */
-const altriAss = function (c) { return c.dest.filter(function (d) { return !eLD(d.sub); }); };
 const MONTE_OK = "Completate", MONTE_NO = "Bolle non ancora emesse";
 /* Lavorazioni a monte raggruppate per lavorante: [{e, tipi, righe}] */
 function monteGruppi(c) {
@@ -768,7 +762,7 @@ function filtra(lista, conStato) {
     if (V.monte && monteNomi(c).indexOf(V.monte) < 0) return false;
     if (V.brand && c.brand !== V.brand) return false;
     if (q) {
-      const t = [c.c, c.mod, c.parte, c.descr].concat(monteNomi(c), c.dest.map(function (d) { return d.sub; }), c.bolle.map(function (b) { return b.b; })).join(" ").toLowerCase();
+      const t = [c.c, c.mod, c.parte, c.descr].concat(monteNomi(c), c.bolle.map(function (b) { return b.b; })).join(" ").toLowerCase();
       if (t.indexOf(q) < 0) return false;
     }
     return true;
@@ -803,16 +797,6 @@ function cellaMonte(c) {
   }).join("") + "</div>";
 }
 
-function notaAss(c) {
-  if (c.stato === "fuori" || !c.dest.length) return "";
-  const altri = altriAss(c);
-  if (!altri.length) return "";
-  const r = altri.length === c.dest.length
-    ? "Assembla <b>" + altri.map(function (d) { return esc(d.sub || "da assegnare"); }).join(", ") + "</b>"
-    : "Divisa con <b>" + altri.map(function (d) { return esc(d.sub || "da assegnare") + " (" + pz(d.q) + ")"; }).join(", ") + "</b>";
-  return '<div class="r"><span class="lbl">Carico</span><div class="ass">' + r + "</div></div>";
-}
-
 function scheda(c) {
   const g = gg(c.scad);
   const clS = g === null ? "" : g < 0 ? "pass" : g <= 7 ? "vic" : "";
@@ -826,7 +810,6 @@ function scheda(c) {
   if (c.stato === "attesa") info += '<div class="r"><span class="lbl">Fasi</span><div><span class="inatt">In attesa di assegnazione</span></div></div>';
   else if (c.fasi.length) info += '<div class="r"><span class="lbl">Fasi da fare</span><div class="fasi">' + c.fasi.map(function (f) { const x = fase(f); return '<span class="fase ' + x[1] + '">' + esc(x[0]) + "</span>"; }).join("") + "</div></div>";
   if (c.stato === "attesa" || c.monte.length) info += '<div class="r"><span class="lbl">A monte</span><div>' + cellaMonte(c) + "</div></div>";
-  info += notaAss(c);
   const conDett = nb || c.monte.length;
   const aperta = conDett && APERTE.has(c.c);
   const etDett = nb ? "Dettaglio " + plur(nb, "bolla", "bolle") : "Dettaglio a monte";
@@ -865,11 +848,6 @@ function dettaglio(c) {
     h += '<h4>Lavorazioni a monte <small>· ancora aperte</small></h4><div class="blocco">' + c.monte.map(function (m) {
       const x = fase(m);
       return '<div class="vv"><span><b>' + esc(m.e) + '</b> <span class="fase ' + x[1] + '">' + esc(x[0]) + '</span></span><span class="m">' + plur(m.nb, "bolla", "bolle") + "</span><b>" + pz(m.pz) + "</b></div>";
-    }).join("") + "</div>";
-  }
-  if (c.dest.length > 1) {
-    h += '<h4>Assegnazione nel Carico</h4><div class="blocco">' + c.dest.map(function (d) {
-      return '<div class="vv' + (eLD(d.sub) ? " io" : "") + '"><span>' + esc(d.sub || "Da assegnare") + '</span><span class="m"></span><b>' + pz(d.q) + "</b></div>";
     }).join("") + "</div>";
   }
   return h;
@@ -986,8 +964,6 @@ function righeCommesse(l) {
       "Bollette aperte": c.bolle.length, "Elenco bolle": c.bolle.map(function (b) { return b.b; }).join(", "),
       "Fasi da fare": c.stato === "attesa" ? "In attesa di assegnazione" : c.fasi.map(function (f) { return fase(f)[0]; }).join(", "),
       "Lavorazioni a monte": monteTesto(c),
-      "Assemblaggio (Carico)": c.stato === "fuori" ? "Non in Carico"
-        : c.dest.map(function (d) { return (d.sub || "Da assegnare") + (c.dest.length > 1 ? " (" + d.q + " pz)" : ""); }).join(" / "),
       "Lanciata": c.lanc || 0, "Aperte": c.ap || 0, "Chiuse": c.ch || 0, "Rimaste": c.rim || 0,
     };
   });
@@ -1015,7 +991,7 @@ $("xls").onclick = async function () {
     const X = await caricaXlsx();
     const l = ordina(filtra(RIGHE, true)), fc = ordina(filtra(FUORI, false));
     const wb = X.utils.book_new();
-    const wc = [18, 10, 14, 8, 30, 14, 11, 10, 10, 30, 34, 44, 24, 10, 10, 10, 10];
+    const wc = [18, 10, 14, 8, 30, 14, 11, 10, 10, 30, 34, 44, 10, 10, 10, 10];
     X.utils.book_append_sheet(wb, foglio(X, righeCommesse(l), wc), "Commesse");
     X.utils.book_append_sheet(wb, foglio(X, righeBolle(l.concat(fc)), [18, 10, 14, 30, 14, 10, 10, 10, 40, 11, 12]), "Bolle aperte");
     if (fc.length) X.utils.book_append_sheet(wb, foglio(X, righeCommesse(fc), wc), "Non in Carico");
